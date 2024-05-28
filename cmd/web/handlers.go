@@ -75,6 +75,7 @@ func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
+	fmt.Print("inside snippetView")
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if id < 1 || err != nil {
 		app.notFound(w)
