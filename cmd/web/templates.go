@@ -2,13 +2,22 @@ package main
 
 import (
 	"html/template"
+	"net/http"
 	"path/filepath"
 	"snippetbox.rahilganatra.net/internal/models"
+	"time"
 )
 
 type templateData struct {
-	Snippet  *models.Snippet
-	Snippets []*models.Snippet
+	CurrentYear int
+	Snippet     *models.Snippet
+	Snippets    []*models.Snippet
+}
+
+func (app *application) newTemplateData(r *http.Request) *templateData {
+	return &templateData{
+		CurrentYear: time.Now().Year(),
+	}
 }
 
 func newTemplatesCache() (map[string]*template.Template, error) {
@@ -26,13 +35,25 @@ func newTemplatesCache() (map[string]*template.Template, error) {
 		//extract the file name from the path
 		name := filepath.Base(page)
 
-		files := []string{"./ui/html/pages/base.gohtml", "./ui/html/partials/nav.gohtml", page}
+		//parse the base template into a template set
+		ts, err := template.ParseFiles("./ui/html/pages/base.gohtml")
 
-		t, err := template.ParseFiles(files...)
 		if err != nil {
 			return nil, err
 		}
-		cache[name] = t
+
+		ts, err = ts.ParseGlob("./ui/html/partials/nav.gohtml")
+
+		if err != nil {
+			return nil, err
+		}
+
+		ts, err = ts.ParseFiles(page)
+		if err != nil {
+			return nil, err
+		}
+
+		cache[name] = ts
 	}
 	return cache, nil
 }
