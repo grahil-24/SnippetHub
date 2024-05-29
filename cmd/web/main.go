@@ -46,16 +46,19 @@ func main() {
 		snippets: &models.SnippetModel{DB: db},
 	}
 	fmt.Println("app created\n")
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
 
-	mux := app.routes()
+		}
+	}(db)
 
 	infoLog.Print("Starting server at ", *addr)
 
 	//make the server use our custom error logger
 	srv := &http.Server{
 		ErrorLog: errorLog,
-		Handler:  mux,
+		Handler:  app.routes(),
 		Addr:     *addr,
 	}
 
