@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"runtime/debug"
@@ -35,11 +36,20 @@ func (app *application) render(w http.ResponseWriter, status int, page string, d
 		return
 	}
 
-	w.WriteHeader(status)
+	//initialize a new buffer
+	buf := new(bytes.Buffer)
 
-	//execute the template if it exists or else return an error
-	err := ts.ExecuteTemplate(w, "base", data)
+	//using buffer we can catch runtime errors in rendering the templates, so users wont get
+	//a 200 status code even if the page was not rendered properly. We first render the template
+	// in a buffer. If it does not return an error, we write to the ResponseWriter from the buffer
+	err := ts.ExecuteTemplate(buf, "base", data)
 	if err != nil {
 		app.serverError(w, err)
+		return
 	}
+
+	w.WriteHeader(status)
+
+	buf.WriteTo(w)
+
 }
