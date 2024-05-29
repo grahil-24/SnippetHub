@@ -14,6 +14,18 @@ type templateData struct {
 	Snippets    []*models.Snippet
 }
 
+// returns formatted time
+func humanDate(t time.Time) string {
+	return t.Format("Mon Jan _2 15:04:05 2006")
+}
+
+// global map for template functions. Functions need to be registered, before the template is parsed
+// so that the functions can be used inside the templates. Template functions should always return 1 value
+// not more than that. Or 1 value and 1 error
+var functions = template.FuncMap{
+	"humanDate": humanDate,
+}
+
 func (app *application) newTemplateData(r *http.Request) *templateData {
 	return &templateData{
 		CurrentYear: time.Now().Year(),
@@ -35,8 +47,9 @@ func newTemplatesCache() (map[string]*template.Template, error) {
 		//extract the file name from the path
 		name := filepath.Base(page)
 
-		//parse the base template into a template set
-		ts, err := template.ParseFiles("./ui/html/pages/base.gohtml")
+		//parse the base template into a template set and register the functions to the template before
+		//ParseFiles() is called
+		ts, err := template.New(name).Funcs(functions).ParseFiles("./ui/html/pages/base.gohtml")
 
 		if err != nil {
 			return nil, err
