@@ -1,6 +1,8 @@
 package main
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -8,7 +10,7 @@ import (
 	"strconv"
 )
 
-// "/" route handler
+// "/" route handler. home page fetches the top 10 latest snippets
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 
 	wd, err := os.Getwd()
@@ -19,16 +21,28 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		app.notFound(w)
 		return
 	}
-	// Use the template.ParseFiles() function to read the template file into a
-	// template set. If there's an error, we log the detailed error message and use
-	// the http.Error() function to send a generic 500 Internal Server Error
-	// response to the user.
-	files := []string{"./ui/html/pages/base.gohtml", "./ui/html/partials/nav.gohtml", "./ui/html/pages/home.gohtml"}
-	ts, err := template.ParseFiles(files...)
+
+	snippets, err := app.snippets.Latest()
+
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
+
+	for _, snippet := range snippets {
+		fmt.Fprintf(w, "%+v", snippet)
+	}
+
+	// Use the template.ParseFiles() function to read the template file into a
+	// template set. If there's an error, we log the detailed error message and use
+	// the http.Error() function to send a generic 500 Internal Server Error
+	// response to the user.
+	//files := []string{"./ui/html/pages/base.gohtml", "./ui/html/partials/nav.gohtml", "./ui/html/pages/home.gohtml"}
+	//ts, err := template.ParseFiles(files...)
+	//if err != nil {
+	//	app.serverError(w, err)
+	//	return
+	//}
 	// We then use the Execute() method on the template set to write the
 	// template content as the response body. The last parameter to Execute()
 	// represents any dynamic data that we want to pass in, which for now we'll
@@ -37,12 +51,13 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 
 	// Use the ExecuteTemplate() method to write the content of the "base"
 	// template as the response body.
-	err = ts.ExecuteTemplate(w, "base", nil)
+	//err = ts.ExecuteTemplate(w, "base", nil)
+	//
+	//if err != nil {
+	//	app.serverError(w, err)
+	//	return
+	//}
 
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
 }
 
 // "/snippet/create" route handler
@@ -75,12 +90,33 @@ func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
-	fmt.Print("inside snippetView")
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if id < 1 || err != nil {
 		app.notFound(w)
 		return
 	}
-	fmt.Fprintf(w, "snippet #%d", id)
+	snippet, err := app.snippets.Get(id)
+	fmt.Println(snippet)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			app.notFound(w)
+		} else {
+			app.serverError(w, err)
+		}
+	}
 
+	//write the snippet as plain text http response body
+	//fmt.Fprintf(w, "%+v", snippet)
+
+	files := []string{"./ui/html/pages/base.gohtml", "./ui/html/partials/nav.gohtml", "./ui/html/pages/view.gohtml"}
+
+	ts, err := template.ParseFiles(files...)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	err = ts.ExecuteTemplate(w, "base", snippet)
+	if err != nil {
+		app.serverError(w, err)
+	}
 }
