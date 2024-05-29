@@ -26,7 +26,7 @@ func main() {
 	addr := flag.String("addr", ":4000", "HTTP network address")
 
 	//database command lind variable
-	dsn := flag.String("dsn", "root:grahil11@/snippetbox?parseTime=true", "mysql DSN")
+	dsn := flag.String("dsn", "web:pass@/snippetbox?parseTime=true", "mysql DSN")
 
 	flag.Parse()
 
