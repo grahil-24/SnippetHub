@@ -1,5 +1,7 @@
-{{define "title"}}Snippet #{{.ID}}{{end}}
+{{define "title"}}Snippet #{{.Snippet.ID}}{{end}}
 {{define "main"}}
+    <!-- in with the dot would be the type mentioned and not the one passed -->
+    {{with .Snippet}}
     <div class='snippet'>
         <div class='metadata'>
             <strong>{{.Title}}</strong>
@@ -11,4 +13,5 @@
             <time>Expires: {{.Expires}}</time>
         </div>
     </div>
+    {{end}}
 {{end}}
