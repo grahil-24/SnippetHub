@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"html/template"
 	"net/http"
 	"os"
 	"strconv"
@@ -29,34 +28,15 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, snippet := range snippets {
-		fmt.Fprintf(w, "%+v", snippet)
+	//for _, snippet := range snippets {
+	//	fmt.Fprintf(w, "%+v", snippet)
+	//}
+
+	data := &templateData{
+		Snippets: snippets,
 	}
 
-	// Use the template.ParseFiles() function to read the template file into a
-	// template set. If there's an error, we log the detailed error message and use
-	// the http.Error() function to send a generic 500 Internal Server Error
-	// response to the user.
-	//files := []string{"./ui/html/pages/base.gohtml", "./ui/html/partials/nav.gohtml", "./ui/html/pages/home.gohtml"}
-	//ts, err := template.ParseFiles(files...)
-	//if err != nil {
-	//	app.serverError(w, err)
-	//	return
-	//}
-	// We then use the Execute() method on the template set to write the
-	// template content as the response body. The last parameter to Execute()
-	// represents any dynamic data that we want to pass in, which for now we'll
-	// leave as nil.
-	//err = ts.Execute(w, nil)
-
-	// Use the ExecuteTemplate() method to write the content of the "base"
-	// template as the response body.
-	//err = ts.ExecuteTemplate(w, "base", nil)
-	//
-	//if err != nil {
-	//	app.serverError(w, err)
-	//	return
-	//}
+	app.render(w, http.StatusOK, "home.gohtml", data)
 
 }
 
@@ -105,18 +85,10 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	//write the snippet as plain text http response body
-	//fmt.Fprintf(w, "%+v", snippet)
-
-	files := []string{"./ui/html/pages/base.gohtml", "./ui/html/partials/nav.gohtml", "./ui/html/pages/view.gohtml"}
-
-	ts, err := template.ParseFiles(files...)
-	if err != nil {
-		app.serverError(w, err)
-		return
+	//wrapping our data in a struct
+	data := &templateData{
+		Snippet: snippet,
 	}
-	err = ts.ExecuteTemplate(w, "base", snippet)
-	if err != nil {
-		app.serverError(w, err)
-	}
+
+	app.render(w, http.StatusOK, "view.gohtml", data)
 }
