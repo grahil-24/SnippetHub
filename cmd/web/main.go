@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"github.com/go-playground/form"
 	_ "github.com/go-sql-driver/mysql"
 	"html/template"
 	"log"
@@ -18,6 +19,7 @@ type application struct {
 	infoLog       *log.Logger
 	snippets      *models.SnippetModel
 	templateCache map[string]*template.Template
+	formDecoder   *form.Decoder
 }
 
 func main() {
@@ -26,7 +28,7 @@ func main() {
 	addr := flag.String("addr", ":4000", "HTTP network address")
 
 	//database command lind variable
-	dsn := flag.String("dsn", "web:pass@/snippetbox?parseTime=true", "mysql DSN")
+	dsn := flag.String("dsn", "root:grahil11@/snippetbox?parseTime=true", "mysql DSN")
 
 	flag.Parse()
 
@@ -46,11 +48,16 @@ func main() {
 	if err != nil {
 		errorLog.Fatal(err)
 	}
+
+	//initialize a form decode
+	formDecoder := form.NewDecoder()
+
 	app := &application{
 		errorLog:      errorLog,
 		infoLog:       infoLog,
 		snippets:      &models.SnippetModel{DB: db},
 		templateCache: templateCache,
+		formDecoder:   formDecoder,
 	}
 	fmt.Println("app created\n")
 	defer func(db *sql.DB) {
