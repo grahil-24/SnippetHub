@@ -13,6 +13,7 @@ type templateData struct {
 	Snippet     *models.Snippet
 	Snippets    []*models.Snippet
 	Form        any
+	Flash       string
 }
 
 // returns formatted time
@@ -28,8 +29,13 @@ var functions = template.FuncMap{
 }
 
 func (app *application) newTemplateData(r *http.Request) *templateData {
+	//fetch the flash message we stored in session during creation of snippet.
+	//PopString() is sort of one time use. As we want to flash the message once after the snippet
+	//has been created, we will fetch and remove it from the session. PopString() does exactly this
+	//If there was no key matching with "flash" an empty string will be returned.
 	return &templateData{
 		CurrentYear: time.Now().Year(),
+		Flash:       app.sessionManager.PopString(r.Context(), "flash"),
 	}
 }
 
