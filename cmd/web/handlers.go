@@ -92,7 +92,11 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		app.serverError(w, err)
 		return
 	}
-
+	//if the snippet was created successfully, we want to display a banner temporarily with text
+	//"snippet created successfully" using session data
+	//use the Put() method to add a string value ("Snippet successfully
+	// created!") and the corresponding key ("flash") to the session data
+	app.sessionManager.Put(r.Context(), "flash", "Snippet created successfully")
 	//redirect to the created snippet after it has been created
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
 }
