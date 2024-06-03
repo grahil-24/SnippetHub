@@ -22,6 +22,7 @@ type application struct {
 	errorLog       *log.Logger
 	infoLog        *log.Logger
 	snippets       *models.SnippetModel
+	users          *models.UserModel
 	templateCache  map[string]*template.Template
 	formDecoder    *form.Decoder
 	sessionManager *scs.SessionManager
