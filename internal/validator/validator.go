@@ -1,9 +1,17 @@
 package validator
 
 import (
+	"regexp"
 	"strings"
 	"unicode/utf8"
 )
+
+// EmailRX uses the regexp.MustCompile() function to parse a regular expression pattern
+// for sanity checking the format of an email address. This returns a pointer to
+// a 'compiled' regexp.Regexp type, or panics in the event of an error. Parsing
+// this pattern once at startup and storing the compiled *regexp.Regexp in a
+// variable is more performant than re-parsing the pattern each time we need it.
+var EmailRX = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 type Validator struct {
 	FieldErrors map[string]string
@@ -22,7 +30,7 @@ func (v *Validator) AddFieldError(key, message string) {
 	}
 }
 
-// CheckField() adds an error message to the FieldErrors map only if a
+// CheckField adds an error message to the FieldErrors map only if a
 // validation check is not 'ok'.
 func (v *Validator) CheckField(ok bool, key, message string) {
 	if !ok {
@@ -30,17 +38,21 @@ func (v *Validator) CheckField(ok bool, key, message string) {
 	}
 }
 
-// returns if string is empty or not
-func NotBlank(message string) bool {
-	return strings.TrimSpace(message) != ""
+// NotBlank returns if string is empty or not
+func NotBlank(field string) bool {
+	return strings.TrimSpace(field) != ""
 }
 
-// MaxChars() returns true if a value contains no more than n characters.
-func MaxChars(message string, limit int) bool {
-	return utf8.RuneCountInString(message) <= limit
+// MaxChars returns true if a value contains no more than n characters.
+func MaxChars(field string, limit int) bool {
+	return utf8.RuneCountInString(field) <= limit
 }
 
-// PermittedInt() returns true if a value is in a list of permitted integers.
+func MinChars(field string, min int) bool {
+	return utf8.RuneCountInString(field) >= min
+}
+
+// PermittedInt returns true if a value is in a list of permitted integers.
 func PermittedInt(num int, permittedVal ...int) bool {
 	for i := range permittedVal {
 		if num == permittedVal[i] {
@@ -48,4 +60,8 @@ func PermittedInt(num int, permittedVal ...int) bool {
 		}
 	}
 	return false
+}
+
+func Matches(value string, rx *regexp.Regexp) bool {
+	return rx.MatchString(value)
 }
