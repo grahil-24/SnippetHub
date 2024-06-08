@@ -14,11 +14,17 @@ import (
 var EmailRX = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 type Validator struct {
-	FieldErrors map[string]string
+	//for errors not related to any particular field. Like incorrect email or password error during login
+	NonFieldErrors []string
+	FieldErrors    map[string]string
 }
 
 func (v *Validator) Valid() bool {
-	return len(v.FieldErrors) == 0
+	return len(v.FieldErrors) == 0 && len(v.NonFieldErrors) == 0
+}
+
+func (v *Validator) AddNonFieldError(message string) {
+	v.NonFieldErrors = append(v.NonFieldErrors, message)
 }
 
 func (v *Validator) AddFieldError(key, message string) {
@@ -53,7 +59,9 @@ func MinChars(field string, min int) bool {
 }
 
 // PermittedInt returns true if a value is in a list of permitted integers.
-func PermittedInt(num int, permittedVal ...int) bool {
+// replace PermittedInt with PermittedValue to make it more generic and work with different types
+// of datatypes
+func PermittedValue[T comparable](num T, permittedVal ...T) bool {
 	for i := range permittedVal {
 		if num == permittedVal[i] {
 			return true
