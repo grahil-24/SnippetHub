@@ -74,7 +74,7 @@ func main() {
 		formDecoder:    formDecoder,
 		sessionManager: sessionManager,
 	}
-	fmt.Println("app created\n")
+	fmt.Println("app created")
 	defer func(db *sql.DB) {
 		err := db.Close()
 		if err != nil {
@@ -92,6 +92,10 @@ func main() {
 		//these two are not as cpu intensive as other methods, so these will be used for better
 		//performance
 		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
+		//So long as you only allow HTTPS requests to your application and enforce TLS 1.3 as the
+		//minimum TLS version, you don’t need to make any additional mitigation against CSRF attacks
+		//(like using the justinas/nosurf package)
+		MinVersion: tls.VersionTLS13,
 	}
 	//make the server use our custom error logger
 	srv := &http.Server{
