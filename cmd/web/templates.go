@@ -1,24 +1,29 @@
 package main
 
 import (
+	"github.com/justinas/nosurf"
 	"html/template"
+	"io/fs"
 	"net/http"
 	"path/filepath"
 	"snippetbox.rahilganatra.net/internal/models"
+	"snippetbox.rahilganatra.net/ui"
 	"time"
 )
 
 type templateData struct {
-	CurrentYear int
-	Snippet     *models.Snippet
-	Snippets    []*models.Snippet
-	Form        any
-	Flash       string
+	CurrentYear     int
+	Snippet         *models.Snippet
+	Snippets        []*models.Snippet
+	Form            any
+	Flash           string
+	IsAuthenticated bool
+	CSRFToken       string
 }
 
 // returns formatted time
 func humanDate(t time.Time) string {
-	return t.Format("Mon Jan _2 15:04:05 2006")
+	return t.UTC().Format("02 Jan 2006 at 15:04")
 }
 
 // global map for template functions. Functions need to be registered, before the template is parsed
@@ -34,8 +39,10 @@ func (app *application) newTemplateData(r *http.Request) *templateData {
 	//has been created, we will fetch and remove it from the session. PopString() does exactly this
 	//If there was no key matching with "flash" an empty string will be returned.
 	return &templateData{
-		CurrentYear: time.Now().Year(),
-		Flash:       app.sessionManager.PopString(r.Context(), "flash"),
+		CurrentYear:     time.Now().Year(),
+		Flash:           app.sessionManager.PopString(r.Context(), "flash"),
+		IsAuthenticated: app.isAuthenticated(r),
+		CSRFToken:       nosurf.Token(r),
 	}
 }
 
@@ -43,8 +50,8 @@ func newTemplatesCache() (map[string]*template.Template, error) {
 	//init a new map which acts as cache
 	cache := map[string]*template.Template{}
 
-	//returns slices of path which match this pattern
-	pages, err := filepath.Glob("./ui/html/pages/*.gohtml")
+	//returns slices of path which match this pattern. fetching the templates from the Embedded file system.
+	pages, err := fs.Glob(ui.Files, "html/pages/*.gohtml")
 	if err != nil {
 		return nil, err
 	}
@@ -54,25 +61,19 @@ func newTemplatesCache() (map[string]*template.Template, error) {
 		//extract the file name from the path
 		name := filepath.Base(page)
 
-		//parse the base template into a template set and register the functions to the template before
-		//ParseFiles() is called
-		ts, err := template.New(name).Funcs(functions).ParseFiles("./ui/html/pages/base.gohtml")
-
+		// Create a slice containing the filepath patterns for the templates we
+		// want to parse.
+		patterns := []string{
+			"html/pages/base.gohtml",
+			"html/partials/*.gohtml",
+			page,
+		}
+		// Use ParseFS() instead of ParseFiles() to parse the template files
+		// from the ui.Files embedded filesystem.
+		ts, err := template.New(name).Funcs(functions).ParseFS(ui.Files, patterns...)
 		if err != nil {
 			return nil, err
 		}
-
-		ts, err = ts.ParseGlob("./ui/html/partials/nav.gohtml")
-
-		if err != nil {
-			return nil, err
-		}
-
-		ts, err = ts.ParseFiles(page)
-		if err != nil {
-			return nil, err
-		}
-
 		cache[name] = ts
 	}
 	return cache, nil
