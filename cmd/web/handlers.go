@@ -30,6 +30,12 @@ type userSignUpForm struct {
 	validator.Validator `form:"-"`
 }
 
+type userLoginForm struct {
+	Email               string `form:"email"`
+	Password            string `form:"password"`
+	validator.Validator `form:"-"`
+}
+
 // "/" route handler. home page fetches the top 10 latest snippets
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 
@@ -84,7 +90,7 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	// we can call CheckField() directly on it to execute our validation checks
 	form.CheckField(validator.NotBlank(form.Title), "title", "this field cannot be empty")
 	form.CheckField(validator.MaxChars(form.Title, 100), "title", "this field cannot be longer than 100 characters")
-	form.CheckField(validator.PermittedInt(form.Expires, 365, 7, 1), "expires", "This field must equal 1, 7 or 365")
+	form.CheckField(validator.PermittedValue(form.Expires, 365, 7, 1), "expires", "This field must equal 1, 7 or 365")
 	form.CheckField(validator.NotBlank(form.Content), "content", "this field cannot be empty")
 
 	//if error exists then return them in plain text http response
@@ -184,13 +190,77 @@ func (app *application) userSignupPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) userLogin(w http.ResponseWriter, r *http.Request) {
-
+	data := app.newTemplateData(r)
+	data.Form = userLoginForm{}
+	app.render(w, http.StatusOK, "login.gohtml", data)
 }
 
 func (app *application) userLoginPost(w http.ResponseWriter, r *http.Request) {
+	var form userLoginForm
+	err := app.decodePostForm(r, &form)
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
 
+	form.CheckField(validator.NotBlank(form.Password), "password", "password cannot be empty")
+	form.CheckField(validator.NotBlank(form.Email), "email", "email cannot be empty")
+	form.CheckField(validator.MinChars(form.Password, 8), "password", "password should be atleast 8 characters")
+	form.CheckField(validator.Matches(form.Email, validator.EmailRX), "email", "enter a valid email address")
+
+	if !form.Valid() {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "login.gohtml", data)
+		return
+	}
+
+	id, err := app.users.Authenticate(form.Email, form.Password)
+	if err != nil {
+		if errors.Is(err, models.ErrInvalidCredentials) {
+			form.AddNonFieldError("Invalid email or password")
+			data := app.newTemplateData(r)
+			data.Form = form
+			app.render(w, http.StatusUnprocessableEntity, "login.gohtml", data)
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
+
+	//if email and password match then we create a new sessionID. Its good practice to generate a new
+	//sessionID when authenticate state of privilege level changes for a user. Eg: after logging in or
+	//logging out
+	err = app.sessionManager.RenewToken(r.Context())
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	//add the ID of the current user to session, so they are now "logged in"
+	app.sessionManager.Put(r.Context(), "authenticatedUserId", id)
+
+	//redirect user to create snippet page
+	http.Redirect(w, r, "/snippet/create", http.StatusSeeOther)
 }
 
 func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 
+	//generate new token for user before logging the user out
+	err := app.sessionManager.RenewToken(r.Context())
+
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	// Remove the authenticatedUserID from the session data so that the user is
+	// 'logged out'.
+	app.sessionManager.Remove(r.Context(), "authenticatedUserId")
+
+	//add a flash message indicating the user, that the user has been logged out
+	app.sessionManager.Put(r.Context(), "flash", "Logged out successfully")
+
+	//redirect to home page
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
