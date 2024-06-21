@@ -36,6 +36,11 @@ type userLoginForm struct {
 	validator.Validator `form:"-"`
 }
 
+// to check the status of the application
+func ping(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("OK"))
+}
+
 // "/" route handler. home page fetches the top 10 latest snippets
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 
