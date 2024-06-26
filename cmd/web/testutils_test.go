@@ -4,17 +4,54 @@ import (
 	"bytes"
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-playground/form"
+	"html"
 	"io"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
+	"regexp"
 	"snippetbox.rahilganatra.net/internal/models/mocks"
 	"testing"
 	"time"
 )
 
-//defining a regex, which captures csrf token from the html page
+// defining a regex, which captures csrf token from the html page
+var csrfTokenRX = regexp.MustCompile(`<input type='hidden' name='csrf_token' value='(.+)'>`)
+
+func extractCSRFToken(t *testing.T, body string) string {
+	// Note that this returns an array with the entire matched pattern in the
+	// first position, and the values of any captured data in the subsequent
+	// positions.
+	matches := csrfTokenRX.FindStringSubmatch(body)
+
+	if len(matches) < 2 {
+		t.Fatal("CSRF token not found")
+	}
+	// So after extracting the token from the HTML we need to run it through html.UnescapeString() to get the original token value.
+	return html.UnescapeString(string(matches[1]))
+}
+
+func (ts *testServer) postForm(t *testing.T, urlPath string, form url.Values) (int, http.Header, string) {
+	rs, err := ts.Client().PostForm(ts.URL+urlPath, form)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Read the response body from the test server.
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(rs.Body)
+	body, err := io.ReadAll(rs.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body = bytes.TrimSpace(body)
+
+	// Return the response status, headers and body.
+	return rs.StatusCode, rs.Header, string(body)
+}
 
 // Create a newTestApplication helper which returns an instance of our
 // application struct containing mocked dependencies.
