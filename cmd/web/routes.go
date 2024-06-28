@@ -45,6 +45,7 @@ func (app *application) routes() http.Handler {
 	dynamic := alice.New(app.sessionManager.LoadAndSave, noSurf, app.authenticate)
 
 	router.Handler(http.MethodGet, "/", dynamic.ThenFunc(app.home))
+	router.Handler(http.MethodGet, "/about", dynamic.ThenFunc(app.about))
 	//routers for user authentication and authorization
 	router.Handler(http.MethodGet, "/user/signup", dynamic.ThenFunc(app.userSignup))
 	router.Handler(http.MethodPost, "/user/signup", dynamic.ThenFunc(app.userSignupPost))
@@ -59,6 +60,8 @@ func (app *application) routes() http.Handler {
 	router.Handler(http.MethodGet, "/snippet/create", protected.ThenFunc(app.snippetCreate))
 	//post request for creating snippet handled by this
 	router.Handler(http.MethodPost, "/snippet/create", protected.ThenFunc(app.snippetCreatePost))
+	//get request for viewing account information
+	router.Handler(http.MethodGet, "/account/view", protected.ThenFunc(app.accountView))
 
 	//alice package makes middleware chaining easier
 	standard := alice.New(app.recoverPanic, app.logRequest, secureHeader)
