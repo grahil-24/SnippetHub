@@ -41,6 +41,11 @@ func ping(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
+func (app *application) about(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(r)
+	app.render(w, http.StatusOK, "about.gohtml", data)
+}
+
 // "/" route handler. home page fetches the top 10 latest snippets
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 
@@ -268,4 +273,21 @@ func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 
 	//redirect to home page
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (app *application) accountView(w http.ResponseWriter, r *http.Request) {
+	userId := app.sessionManager.GetInt(r.Context(), "authenticatedUserId")
+	user, err := app.users.Get(userId)
+
+	if err != nil {
+		if errors.Is(err, models.ErrNoRecord) {
+			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
+	data := app.newTemplateData(r)
+	data.User = user
+	app.render(w, http.StatusOK, "account.gohtml", data)
 }
